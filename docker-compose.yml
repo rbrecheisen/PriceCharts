@@ -1,0 +1,98 @@
+services:
+
+  db:
+    image: postgres:16-alpine
+    platform: linux/arm64
+    container_name: pricecharts_postgres
+    environment:
+      - POSTGRES_DB=db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=foobar
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d db"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    expose:
+      - 5432
+    ports:
+      - 5432:5432  # Required for running Django outside Docker but using PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nginx:
+    build: ./nginx
+    image: brecheisen/pricecharts-nginx-arm64:latest
+    platform: linux/arm64
+    container_name: pricecharts_nginx
+    ports:
+      - "8000:8000"
+    volumes:
+      - data:/data
+    depends_on:
+      - web
+
+  redis:
+    image: redis:alpine
+    platform: linux/arm64
+    container_name: pricecharts_redis
+    expose:
+      - 6379
+    ports:
+      - 6379:6379
+
+  huey:
+    build: .
+    image: brecheisen/pricecharts-huey-arm64:latest
+    platform: linux/arm64
+    command: python manage.py run_huey
+    container_name: pricecharts_huey
+    environment:
+      - DATA_DIR=/data
+      - POSTGRES_DB=db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=foobar
+      - POSTGRES_HOST=pricecharts_postgres # When you run Django in Docker set the host
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=pricecharts_redis
+      - DOCKER=true
+    volumes:
+      - data:/data
+    depends_on:
+      web:
+        condition: service_healthy # Wait for init data models
+
+  web:
+    build: .
+    image: brecheisen/pricecharts-web-arm64:latest
+    platform: linux/arm64
+    container_name: pricecharts_web
+    environment:
+      - DATA_DIR=/data
+      - POSTGRES_DB=db
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=foobar
+      - POSTGRES_HOST=pricecharts_postgres # When you run Django in Docker set the host
+      - POSTGRES_PORT=5432
+      - REDIS_HOST=pricecharts_redis
+      - DOCKER=true
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/healthcheck/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  data:
+    name: pricecharts_data
+  postgres_data:
+    name: pricecharts_postgres_data
+
+networks:
+  default:
+    name: pricecharts
