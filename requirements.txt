@@ -18,3 +18,4 @@ openpyxl
 oandapyV20
 redis
 notifiers
+yfinance

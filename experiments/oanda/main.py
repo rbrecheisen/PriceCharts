@@ -39,8 +39,8 @@ def get_candlesticks(url, instrument, granularity, start, stop):
 
 
 def main():
-    # A candlestick starts at 22:00 local time and ends at 21:59 local time.
-    get_candlesticks(OANDA_URL_CANDLES, 'EUR_USD', 'D', '2024-12-11T22:00Z', '2024-12-12T21:59Z')
+    # get_candlesticks(OANDA_URL_CANDLES, 'EUR_USD', 'D', '2024-12-11T22:00Z', '2024-12-12T21:59Z')
+    get_candlesticks(OANDA_URL_CANDLES, 'EUR_USD', 'D', '2024-12-01T22:00Z', '2024-12-12T21:59Z')
 
 
 if __name__ == '__main__':
